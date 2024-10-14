@@ -1,0 +1,197 @@
+import { Callout, Tabs, Tab } from 'nextra-theme-docs';
+import { Steps, FileTree } from 'nextra/components';
+import { Columns, Column } from '@components/columns';
+
+# Importing
+
+<Callout type="warning">
+The import feature _**DOES NOT**_ convert your existing Roblox project into a
+Mantle project. Do not import, then deploy a place with Mantle without first
+testing on a staging environment as you may destroy your assets.
+</Callout>
+
+Mantle provides an `import` command that allows you to import your existing Roblox experience into a Mantle
+project. However, the import process can be dangerous and may result in the deletion of your assets. This
+guide will walk you through the process to ensure that you do not lose any of your assets.
+
+<Steps>
+### Temporarily use local state management
+
+If you're using remote state management, we recommend temporarily switching to local state management for the
+rest of this process to:
+
+1. simplify editing the state file, and
+2. prevent unintentional deploys based on your remote state during the process which could delete your assets.
+
+To temporarily switch, you can follow these steps:
+
+1. Run `mantle state download`
+2. Edit your mantle config file to use local state management (e.g. comment out the `state` object)
+
+### Backup your state file
+
+The import process requires making manual changes to your state file. We recommend backing up your state file
+if it's not already to ensure you can restore it later.
+
+### Target your desired environment
+
+Importing your experience will overwrite the state file in the environment you are targeting. Therefore,
+before importing, you should make sure you are targeting the environment you want to import your experience
+into. For example, if you want to import your experience into the `production` environment, first
+ensure you have configured the `production` environment in your mantle config file:
+
+```yml
+environments:
+  - label: production
+    branches: [prod]
+```
+
+Then, ensure you are targeting the `production` environment by either:
+
+- checking out an associated git branch (if you have specified one), or
+- passing the `--environment` (or `-e`) flag to the import command.
+
+### Import your experience
+
+Run `mantle import --target-id <EXPERIENCE_ID>` to import your experience.
+
+After the import command finishes, you can look at your state file to verify it has populated your targeted
+environment's resources.
+
+<Callout type="error"> **DO NOT** run `mantle deploy` with this state file until completing the following
+steps or you may lose your assets. </Callout>
+
+The imported state file includes all of the resources in your experience that Mantle knows about, however they
+have not been linked to your local project yet.
+
+### Understand how Mantle will deploy your experience
+
+If you were to deploy your experience now, Mantle would:
+
+1. Build a "desired" state based on your project's configuration and the files in your project
+2. Compare the "desired" state to the "current" state (the state file you just imported)
+3. Delete any resources in the "current" state that are not in the "desired" state
+4. Create any resources in the "desired" state that are not in the "current" state
+5. Update any resources in the "current" state that exist in the "desired" state but have changes
+
+<Callout type="info"> Note that if a resource is not present in the state file, Mantle does not know it exists
+when it deploys your project and will therefore never update or delete it.</Callout>
+
+The way Mantle determines if a resource is in the "current" state is by generating an ID for the resource when
+it builds the "desired" state. This ID is generated differently for different resource types.
+
+Therefore, in order to ensure a safe deployment, you must update each resource in the state file in one of
+three ways:
+
+1. The resource matches a Mantle-managed resource and already has the correct ID and inputs. You should leave
+   it as-is.
+2. The resource matches a Mantle-managed resource but has the wrong ID or inputs. You should update its ID or
+   inputs to the correct ones.
+3. The resource does not match a Mantle-managed resource. You should delete it from the state file so that
+   Mantle will ignore it.
+
+### Update your state file
+
+You'll need to update your state file according to the above description. Follow the steps below for each
+resource type.
+
+When updating the inputs for image-related resources, you'll need to provide the `fileHash` for the image. The
+simplest way to do this will be to get it from the inputs of the matching resource in a different environment
+that is already managed by Mantle. Alternatively, leaving it as `fake-hash` will simply cause Mantle to update
+the image, even if it hasn't changed.
+
+#### Resources with correct IDs and inputs
+
+The following resources should have the correct IDs and inputs already and can be left as-is:
+
+* Experiences (`experience_singleton`)
+* Experience Activation (`experienceActivation_singleton`)
+* Experience Configuration (`experienceConfiguration_singleton`)
+* Experience Thumbnail Order (`experienceThumbnailOrder_singleton`)
+
+#### Experience thumbnails
+
+| Imported ID format | Managed ID format |
+| ----- | ---- |
+| `experienceThumbnail_<ASSET_ID>` | `experienceThumbnail_<FILE_PATH>` |
+
+Example: given the below project structure and Mantle config, make the changes to the state file.
+
+<Columns count={2}>
+<Column heading="Project structure">
+   <FileTree>
+      <FileTree.File name="mantle.yml" />
+      <FileTree.File name="direct-thumbnail.png" />
+      <FileTree.Folder name="marketing" defaultOpen>
+         <FileTree.File name="thumbnail-1.png" />
+         <FileTree.File name="thumbnail-2.jpg" />
+      </FileTree.Folder>
+   </FileTree>
+</Column>
+<Column heading="Mantle config">
+   ```yml filename="mantle.yml"
+   target:
+   experience:
+      thumbnails:
+         - direct-thumbnail.png
+         - marketing/thumbnail*
+   ```
+</Column>
+</Columns>
+
+```diff filename=".mantle-state.yml"
+environments:
+  prod:
+-    - id: experienceThumbnail_57595630
++    - id: experienceThumbnail_direct-thumbnail.png
+      inputs:
+        experienceThumbnail:
+-          filePath: fake-path
++          filePath: direct-thumbnail.png
+-          fileHash: fake-hash
++          fileHash: 14fff07f4eb2cc47fd4014d1b6693ba1d18a5ae461a8fd78c3bbaae6eef0544d
+      outputs:
+        experienceThumbnail:
+          assetId: 57595630
+      dependencies:
+        - experience_singleton
+-    - id: experienceThumbnail_57595629
++    - id: experienceThumbnail_marketing/thumbnail-1.png
+      inputs:
+        experienceThumbnail:
+-          filePath: fake-path
++          filePath: marketing/thumbnail-1.png
+-          fileHash: fake-hash
++          fileHash: 59440408d802ee81458373a2bb4bd1be0a8c4c74fc5995bc67726ec3e6c0cdd4
+      outputs:
+        experienceThumbnail:
+          assetId: 57595629
+      dependencies:
+        - experience_singleton
+-    - id: experienceThumbnail_57595628
++    - id: experienceThumbnail_marketing/thumbnail-2.jpg
+      inputs:
+        experienceThumbnail:
+-          filePath: fake-path
++          filePath: marketing/thumbnail-2.jpg
+-          fileHash: fake-hash
++          fileHash: 3a4f4d3b506f2a2a394f74ac0725854ca160707e9882b42682b77a5a1175f3c8
+      outputs:
+        experienceThumbnail:
+          assetId: 57595628
+      dependencies:
+        - experience_singleton
+```
+
+#### Images
+
+### Switch back to remote state management
+
+If you switched to local state management, you can now switch back to remote state management by following
+these steps:
+
+1. Edit your mantle config file to use remote state management (e.g. uncomment the `state` object)
+2. Run `mantle state upload` (this will replace your remote state with the local state file you modified as
+   part of this process)
+
+</Steps>
