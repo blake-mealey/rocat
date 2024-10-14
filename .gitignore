@@ -1,6 +1,7 @@
 node_modules
 
 *.env
+mantle.yml
 
 *.DS_Store
 
