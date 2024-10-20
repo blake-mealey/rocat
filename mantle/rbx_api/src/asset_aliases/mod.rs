@@ -18,18 +18,23 @@ impl RobloxApi {
         asset_id: AssetId,
         name: String,
     ) -> RobloxApiResult<()> {
-        let req = self
-            .client
-            .post("https://apis.roblox.com/content-aliases-api/v1/universes/create-alias")
-            .header(header::CONTENT_LENGTH, 0)
-            .query(&[
-                ("universeId", experience_id.to_string().as_str()),
-                ("name", name.as_str()),
-                ("type", "1"),
-                ("targetId", asset_id.to_string().as_str()),
-            ]);
+        let res = self
+            .csrf_token_store
+            .send_request(|| async {
+                Ok(self
+                    .client
+                    .post("https://apis.roblox.com/content-aliases-api/v1/universes/create-alias")
+                    .header(header::CONTENT_LENGTH, 0)
+                    .query(&[
+                        ("universeId", experience_id.to_string().as_str()),
+                        ("name", name.as_str()),
+                        ("type", "1"),
+                        ("targetId", asset_id.to_string().as_str()),
+                    ]))
+            })
+            .await;
 
-        handle(req).await?;
+        handle(res).await?;
 
         Ok(())
     }
@@ -41,18 +46,23 @@ impl RobloxApi {
         previous_name: String,
         name: String,
     ) -> RobloxApiResult<()> {
-        let req = self
-            .client
-            .post("https://apis.roblox.com/content-aliases-api/v1/universes/update-alias")
-            .query(&[
-                ("universeId", experience_id.to_string().as_str()),
-                ("oldName", previous_name.as_str()),
-                ("name", name.as_str()),
-                ("type", "1"),
-                ("targetId", asset_id.to_string().as_str()),
-            ]);
+        let res = self
+            .csrf_token_store
+            .send_request(|| async {
+                Ok(self
+                    .client
+                    .post("https://apis.roblox.com/content-aliases-api/v1/universes/update-alias")
+                    .query(&[
+                        ("universeId", experience_id.to_string().as_str()),
+                        ("oldName", previous_name.as_str()),
+                        ("name", name.as_str()),
+                        ("type", "1"),
+                        ("targetId", asset_id.to_string().as_str()),
+                    ]))
+            })
+            .await;
 
-        handle(req).await?;
+        handle(res).await?;
 
         Ok(())
     }
@@ -62,13 +72,18 @@ impl RobloxApi {
         experience_id: AssetId,
         name: String,
     ) -> RobloxApiResult<()> {
-        let req = self
-            .client
-            .post("https://apis.roblox.com/content-aliases-api/v1/universes/delete-alias")
-            .header(header::CONTENT_LENGTH, 0)
-            .query(&[("universeId", &experience_id.to_string()), ("name", &name)]);
+        let res = self
+            .csrf_token_store
+            .send_request(|| async {
+                Ok(self
+                    .client
+                    .post("https://apis.roblox.com/content-aliases-api/v1/universes/delete-alias")
+                    .header(header::CONTENT_LENGTH, 0)
+                    .query(&[("universeId", &experience_id.to_string()), ("name", &name)]))
+            })
+            .await;
 
-        handle(req).await?;
+        handle(res).await?;
 
         Ok(())
     }
@@ -78,15 +93,20 @@ impl RobloxApi {
         experience_id: AssetId,
         page: u32,
     ) -> RobloxApiResult<ListAssetAliasesResponse> {
-        let req = self
-            .client
-            .get("https://apis.roblox.com/content-aliases-api/v1/universes/get-aliases")
-            .query(&[
-                ("universeId", &experience_id.to_string()),
-                ("page", &page.to_string()),
-            ]);
+        let res = self
+            .csrf_token_store
+            .send_request(|| async {
+                Ok(self
+                    .client
+                    .get("https://apis.roblox.com/content-aliases-api/v1/universes/get-aliases")
+                    .query(&[
+                        ("universeId", &experience_id.to_string()),
+                        ("page", &page.to_string()),
+                    ]))
+            })
+            .await;
 
-        handle_as_json(req).await
+        handle_as_json(res).await
     }
 
     pub async fn get_all_asset_aliases(

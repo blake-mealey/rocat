@@ -1,6 +1,7 @@
 use std::{
     env,
     path::{Path, PathBuf},
+    sync::Arc,
 };
 
 use async_trait::async_trait;
@@ -28,7 +29,7 @@ use rbx_api::{
     spatial_voice::models::UpdateSpatialVoiceSettingsRequest,
     RobloxApi,
 };
-use rbx_auth::RobloxAuth;
+use rbx_auth::{RobloxCookieStore, RobloxCsrfTokenStore};
 use rbxcloud::rbx::{
     types::{PlaceId, UniverseId},
     v1::{PublishVersionType, RbxCloud},
@@ -335,8 +336,9 @@ pub struct RobloxResourceManager {
 
 impl RobloxResourceManager {
     pub async fn new(project_path: &Path, payment_source: CreatorType) -> Result<Self, String> {
-        let roblox_auth = RobloxAuth::new().await?;
-        let roblox_api = RobloxApi::new(roblox_auth)?;
+        let cookie_store = Arc::new(RobloxCookieStore::new()?);
+        let csrf_token_store = RobloxCsrfTokenStore::new();
+        let roblox_api = RobloxApi::new(cookie_store, csrf_token_store)?;
         roblox_api.validate_auth().await?;
 
         let open_cloud_api_key = match env::var("MANTLE_OPEN_CLOUD_API_KEY") {

@@ -13,6 +13,14 @@ target:
           name: Lightweight Mantle Test
           serverFill:
             reservedSlots: 4
+    badges:
+      myBadge:
+        name: Badge
+        icon: assets/badge-2.png
+    assets:
+      - assets/*
+    thumbnails:
+      - assets/badge-2.png
 
 state:
   remote:

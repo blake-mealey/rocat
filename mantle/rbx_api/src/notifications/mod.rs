@@ -20,16 +20,18 @@ impl RobloxApi {
         name: String,
         content: String,
     ) -> RobloxApiResult<CreateNotificationResponse> {
-        let req = self
+        let res = self.csrf_token_store.send_request(||async {
+            Ok(self
             .client
             .post("https://apis.roblox.com/notifications/v1/developer-configuration/create-notification")
             .json(&json!({
                 "universeId": experience_id,
                 "name": name,
                 "content": content,
-            }));
+            })))
+        }).await;
 
-        handle_as_json(req).await
+        handle_as_json(res).await
     }
 
     pub async fn update_notification(
@@ -38,29 +40,33 @@ impl RobloxApi {
         name: String,
         content: String,
     ) -> RobloxApiResult<()> {
-        let req = self
+        let res = self.csrf_token_store.send_request(||async {
+            Ok(self
             .client
             .post("https://apis.roblox.com/notifications/v1/developer-configuration/update-notification")
             .json(&json!({
                 "id": notification_id,
                 "name": name,
                 "content": content,
-            }));
+            })))
+        }).await;
 
-        handle(req).await?;
+        handle(res).await?;
 
         Ok(())
     }
 
     pub async fn archive_notification(&self, notification_id: String) -> RobloxApiResult<()> {
-        let req = self
+        let res = self.csrf_token_store.send_request(||async {
+            Ok(self
             .client
             .post("https://apis.roblox.com/notifications/v1/developer-configuration/archive-notification")
             .json(&json!({
                 "id": notification_id,
-            }));
+            })))
+        }).await;
 
-        handle(req).await?;
+        handle(res).await?;
 
         Ok(())
     }
@@ -71,18 +77,21 @@ impl RobloxApi {
         count: u8,
         page_cursor: Option<String>,
     ) -> RobloxApiResult<ListNotificationsResponse> {
-        let mut req = self
-            .client
-            .get("https://apis.roblox.com/notifications/v1/developer-configuration/experience-notifications-list")
-            .query(&[
-                ("universeId", &experience_id.to_string()),
-                ("count", &count.to_string()),
-            ]);
-        if let Some(page_cursor) = page_cursor {
-            req = req.query(&[("cursor", &page_cursor)]);
-        }
+        let res = self.csrf_token_store.send_request(|| async {
+            let mut req = self
+                .client
+                .get("https://apis.roblox.com/notifications/v1/developer-configuration/experience-notifications-list")
+                .query(&[
+                    ("universeId", &experience_id.to_string()),
+                    ("count", &count.to_string()),
+                ]);
+            if let Some(page_cursor) = &page_cursor {
+                req = req.query(&[("cursor", page_cursor)]);
+            }
+            Ok(req)
+        }).await;
 
-        handle_as_json(req).await
+        handle_as_json(res).await
     }
 
     pub async fn get_all_notifications(

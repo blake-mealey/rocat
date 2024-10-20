@@ -15,21 +15,25 @@ use crate::{
 use self::models::{GetExperienceThumbnailResponse, GetExperienceThumbnailsResponse};
 
 impl RobloxApi {
-    // TODO: Generic form
     pub async fn upload_icon(
         &self,
         experience_id: AssetId,
         icon_file: PathBuf,
     ) -> RobloxApiResult<UploadImageResponse> {
-        let req = self
-            .client
-            .post(&format!(
-                "https://publish.roblox.com/v1/games/{}/icon",
-                experience_id
-            ))
-            .multipart(Form::new().part("request.files", get_file_part(icon_file).await?));
+        let res = self
+            .csrf_token_store
+            .send_request(|| async {
+                Ok(self
+                    .client
+                    .post(&format!(
+                        "https://publish.roblox.com/v1/games/{}/icon",
+                        experience_id
+                    ))
+                    .multipart(Form::new().part("request.files", get_file_part(&icon_file).await?)))
+            })
+            .await;
 
-        handle_as_json(req).await
+        handle_as_json(res).await
     }
 
     pub async fn upload_thumbnail(
@@ -37,15 +41,22 @@ impl RobloxApi {
         experience_id: AssetId,
         thumbnail_file: PathBuf,
     ) -> RobloxApiResult<UploadImageResponse> {
-        let req = self
-            .client
-            .post(&format!(
-                "https://publish.roblox.com/v1/games/{}/thumbnail/image",
-                experience_id
-            ))
-            .multipart(Form::new().part("request.files", get_file_part(thumbnail_file).await?));
+        let res = self
+            .csrf_token_store
+            .send_request(|| async {
+                Ok(self
+                    .client
+                    .post(&format!(
+                        "https://publish.roblox.com/v1/games/{}/thumbnail/image",
+                        experience_id
+                    ))
+                    .multipart(
+                        Form::new().part("request.files", get_file_part(&thumbnail_file).await?),
+                    ))
+            })
+            .await;
 
-        handle_as_json(req).await
+        handle_as_json(res).await
     }
 
     pub async fn remove_experience_icon(
@@ -53,15 +64,20 @@ impl RobloxApi {
         start_place_id: AssetId,
         icon_asset_id: AssetId,
     ) -> RobloxApiResult<()> {
-        let req = self
-            .client
-            .post("https://www.roblox.com/places/icons/remove-icon")
-            .form(&[
-                ("placeId", &start_place_id.to_string()),
-                ("placeIconId", &icon_asset_id.to_string()),
-            ]);
+        let res = self
+            .csrf_token_store
+            .send_request(|| async {
+                Ok(self
+                    .client
+                    .post("https://www.roblox.com/places/icons/remove-icon")
+                    .form(&[
+                        ("placeId", &start_place_id.to_string()),
+                        ("placeIconId", &icon_asset_id.to_string()),
+                    ]))
+            })
+            .await;
 
-        handle(req).await?;
+        handle(res).await?;
 
         Ok(())
     }
@@ -70,12 +86,17 @@ impl RobloxApi {
         &self,
         experience_id: AssetId,
     ) -> RobloxApiResult<Vec<GetExperienceThumbnailResponse>> {
-        let req = self.client.get(format!(
-            "https://games.roblox.com/v1/games/{}/media",
-            experience_id
-        ));
+        let res = self
+            .csrf_token_store
+            .send_request(|| async {
+                Ok(self.client.get(format!(
+                    "https://games.roblox.com/v1/games/{}/media",
+                    experience_id
+                )))
+            })
+            .await;
 
-        Ok(handle_as_json::<GetExperienceThumbnailsResponse>(req)
+        Ok(handle_as_json::<GetExperienceThumbnailsResponse>(res)
             .await?
             .data)
     }
@@ -85,15 +106,20 @@ impl RobloxApi {
         experience_id: AssetId,
         new_thumbnail_order: &[AssetId],
     ) -> RobloxApiResult<()> {
-        let req = self
-            .client
-            .post(format!(
-                "https://develop.roblox.com/v1/universes/{}/thumbnails/order",
-                experience_id
-            ))
-            .json(&json!({ "thumbnailIds": new_thumbnail_order }));
+        let res = self
+            .csrf_token_store
+            .send_request(|| async {
+                Ok(self
+                    .client
+                    .post(format!(
+                        "https://develop.roblox.com/v1/universes/{}/thumbnails/order",
+                        experience_id
+                    ))
+                    .json(&json!({ "thumbnailIds": new_thumbnail_order })))
+            })
+            .await;
 
-        handle(req).await?;
+        handle(res).await?;
 
         Ok(())
     }
@@ -103,12 +129,17 @@ impl RobloxApi {
         experience_id: AssetId,
         thumbnail_id: AssetId,
     ) -> RobloxApiResult<()> {
-        let req = self.client.delete(format!(
-            "https://develop.roblox.com/v1/universes/{}/thumbnails/{}",
-            experience_id, thumbnail_id
-        ));
+        let res = self
+            .csrf_token_store
+            .send_request(|| async {
+                Ok(self.client.delete(format!(
+                    "https://develop.roblox.com/v1/universes/{}/thumbnails/{}",
+                    experience_id, thumbnail_id
+                )))
+            })
+            .await;
 
-        handle(req).await?;
+        handle(res).await?;
 
         Ok(())
     }

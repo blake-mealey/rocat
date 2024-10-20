@@ -1,5 +1,7 @@
+use std::sync::Arc;
+
 use rbx_api::{models::AssetId, RobloxApi};
-use rbx_auth::RobloxAuth;
+use rbx_auth::{RobloxCookieStore, RobloxCsrfTokenStore};
 use yansi::Paint;
 
 use rbx_mantle::{
@@ -54,14 +56,15 @@ pub async fn run(project: Option<&str>, environment: Option<&str>, target_id: &s
     };
 
     logger::start_action("Import target:");
-    let roblox_auth = match RobloxAuth::new().await {
-        Ok(v) => v,
+    let cookie_store = match RobloxCookieStore::new() {
+        Ok(v) => Arc::new(v),
         Err(e) => {
             logger::end_action(Paint::red(e));
             return 1;
         }
     };
-    let roblox_api = match RobloxApi::new(roblox_auth) {
+    let csrf_token_store = RobloxCsrfTokenStore::new();
+    let roblox_api = match RobloxApi::new(cookie_store, csrf_token_store) {
         Ok(v) => v,
         Err(e) => {
             logger::end_action(Paint::red(e));

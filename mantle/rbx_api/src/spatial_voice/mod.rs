@@ -13,26 +13,36 @@ impl RobloxApi {
         experience_id: AssetId,
         settings: UpdateSpatialVoiceSettingsRequest,
     ) -> RobloxApiResult<UpdateSpatialVoiceSettingsResponse> {
-        let req = self
-            .client
-            .post(format!(
-                "https://voice.roblox.com/v1/settings/universe/{}",
-                experience_id
-            ))
-            .json(&settings);
+        let res = self
+            .csrf_token_store
+            .send_request(|| async {
+                Ok(self
+                    .client
+                    .post(format!(
+                        "https://voice.roblox.com/v1/settings/universe/{}",
+                        experience_id
+                    ))
+                    .json(&settings))
+            })
+            .await;
 
-        handle_as_json::<UpdateSpatialVoiceSettingsResponse>(req).await
+        handle_as_json::<UpdateSpatialVoiceSettingsResponse>(res).await
     }
 
     pub async fn get_spatial_voice_settings(
         &self,
         experience_id: AssetId,
     ) -> RobloxApiResult<GetSpatialVoiceSettingsResponse> {
-        let req = self.client.get(format!(
-            "https://voice.roblox.com/v1/settings/universe/{}",
-            experience_id
-        ));
+        let res = self
+            .csrf_token_store
+            .send_request(|| async {
+                Ok(self.client.get(format!(
+                    "https://voice.roblox.com/v1/settings/universe/{}",
+                    experience_id
+                )))
+            })
+            .await;
 
-        handle_as_json::<GetSpatialVoiceSettingsResponse>(req).await
+        handle_as_json::<GetSpatialVoiceSettingsResponse>(res).await
     }
 }

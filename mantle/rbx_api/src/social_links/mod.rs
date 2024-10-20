@@ -21,19 +21,24 @@ impl RobloxApi {
         url: String,
         link_type: SocialLinkType,
     ) -> RobloxApiResult<CreateSocialLinkResponse> {
-        let req = self
-            .client
-            .post(format!(
-                "https://develop.roblox.com/v1/universes/{}/social-links",
-                experience_id
-            ))
-            .json(&json!({
-                "title": title,
-                "url": url,
-                "type": link_type,
-            }));
+        let res = self
+            .csrf_token_store
+            .send_request(|| async {
+                Ok(self
+                    .client
+                    .post(format!(
+                        "https://develop.roblox.com/v1/universes/{}/social-links",
+                        experience_id
+                    ))
+                    .json(&json!({
+                        "title": title,
+                        "url": url,
+                        "type": link_type,
+                    })))
+            })
+            .await;
 
-        handle_as_json(req).await
+        handle_as_json(res).await
     }
 
     pub async fn update_social_link(
@@ -44,19 +49,24 @@ impl RobloxApi {
         url: String,
         link_type: SocialLinkType,
     ) -> RobloxApiResult<()> {
-        let req = self
-            .client
-            .patch(format!(
-                "https://develop.roblox.com/v1/universes/{}/social-links/{}",
-                experience_id, social_link_id
-            ))
-            .json(&json!({
-                "title": title,
-                "url": url,
-                "type": link_type,
-            }));
+        let res = self
+            .csrf_token_store
+            .send_request(|| async {
+                Ok(self
+                    .client
+                    .patch(format!(
+                        "https://develop.roblox.com/v1/universes/{}/social-links/{}",
+                        experience_id, social_link_id
+                    ))
+                    .json(&json!({
+                        "title": title,
+                        "url": url,
+                        "type": link_type,
+                    })))
+            })
+            .await;
 
-        handle(req).await?;
+        handle(res).await?;
 
         Ok(())
     }
@@ -66,12 +76,17 @@ impl RobloxApi {
         experience_id: AssetId,
         social_link_id: AssetId,
     ) -> RobloxApiResult<()> {
-        let req = self.client.delete(format!(
-            "https://develop.roblox.com/v1/universes/{}/social-links/{}",
-            experience_id, social_link_id
-        ));
+        let res = self
+            .csrf_token_store
+            .send_request(|| async {
+                Ok(self.client.delete(format!(
+                    "https://develop.roblox.com/v1/universes/{}/social-links/{}",
+                    experience_id, social_link_id
+                )))
+            })
+            .await;
 
-        handle(req).await?;
+        handle(res).await?;
 
         Ok(())
     }
@@ -80,11 +95,16 @@ impl RobloxApi {
         &self,
         experience_id: AssetId,
     ) -> RobloxApiResult<Vec<GetSocialLinkResponse>> {
-        let req = self.client.get(format!(
-            "https://games.roblox.com/v1/games/{}/social-links/list",
-            experience_id
-        ));
+        let res = self
+            .csrf_token_store
+            .send_request(|| async {
+                Ok(self.client.get(format!(
+                    "https://games.roblox.com/v1/games/{}/social-links/list",
+                    experience_id
+                )))
+            })
+            .await;
 
-        Ok(handle_as_json::<ListSocialLinksResponse>(req).await?.data)
+        Ok(handle_as_json::<ListSocialLinksResponse>(res).await?.data)
     }
 }

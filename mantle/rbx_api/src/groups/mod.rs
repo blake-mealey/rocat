@@ -19,15 +19,20 @@ impl RobloxApi {
         user_id: AssetId,
         role_id: u64,
     ) -> RobloxApiResult<()> {
-        let req = self
-            .client
-            .patch(format!(
-                "https://groups.roblox.com/v1/groups/{}/users/{}",
-                group_id, user_id
-            ))
-            .json(&json!({ "roleId": role_id }));
+        let res = self
+            .csrf_token_store
+            .send_request(|| async {
+                Ok(self
+                    .client
+                    .patch(format!(
+                        "https://groups.roblox.com/v1/groups/{}/users/{}",
+                        group_id, user_id
+                    ))
+                    .json(&json!({ "roleId": role_id })))
+            })
+            .await;
 
-        handle(req).await?;
+        handle(res).await?;
 
         Ok(())
     }
@@ -36,11 +41,16 @@ impl RobloxApi {
         &self,
         group_id: AssetId,
     ) -> RobloxApiResult<ListGroupRolesResponse> {
-        let req = self.client.get(format!(
-            "https://groups.roblox.com/v1/groups/{}/roles",
-            group_id
-        ));
+        let res = self
+            .csrf_token_store
+            .send_request(|| async {
+                Ok(self.client.get(format!(
+                    "https://groups.roblox.com/v1/groups/{}/roles",
+                    group_id
+                )))
+            })
+            .await;
 
-        handle_as_json(req).await
+        handle_as_json(res).await
     }
 }

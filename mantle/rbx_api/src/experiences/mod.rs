@@ -17,42 +17,57 @@ impl RobloxApi {
         &self,
         group_id: Option<AssetId>,
     ) -> RobloxApiResult<CreateExperienceResponse> {
-        let mut req = self
-            .client
-            .post("https://apis.roblox.com/universes/v1/universes/create")
-            .json(&json!({
-                "templatePlaceId": 95206881,
-            }));
+        let res = self
+            .csrf_token_store
+            .send_request(|| async {
+                let mut req = self
+                    .client
+                    .post("https://apis.roblox.com/universes/v1/universes/create")
+                    .json(&json!({
+                        "templatePlaceId": 95206881,
+                    }));
+                if let Some(group_id) = group_id {
+                    req = req.query(&[("groupId", group_id.to_string())]);
+                }
+                Ok(req)
+            })
+            .await;
 
-        if let Some(group_id) = group_id {
-            req = req.query(&[("groupId", group_id.to_string())]);
-        }
-
-        handle_as_json(req).await
+        handle_as_json(res).await
     }
 
     pub async fn get_experience(
         &self,
         experience_id: AssetId,
     ) -> RobloxApiResult<GetExperienceResponse> {
-        let req = self.client.get(format!(
-            "https://develop.roblox.com/v1/universes/{}",
-            experience_id
-        ));
+        let res = self
+            .csrf_token_store
+            .send_request(|| async {
+                Ok(self.client.get(format!(
+                    "https://develop.roblox.com/v1/universes/{}",
+                    experience_id
+                )))
+            })
+            .await;
 
-        handle_as_json(req).await
+        handle_as_json(res).await
     }
 
     pub async fn get_experience_configuration(
         &self,
         experience_id: AssetId,
     ) -> RobloxApiResult<ExperienceConfigurationModel> {
-        let req = self.client.get(format!(
-            "https://develop.roblox.com/v1/universes/{}/configuration",
-            experience_id
-        ));
+        let res = self
+            .csrf_token_store
+            .send_request(|| async {
+                Ok(self.client.get(format!(
+                    "https://develop.roblox.com/v1/universes/{}/configuration",
+                    experience_id
+                )))
+            })
+            .await;
 
-        handle_as_json(req).await
+        handle_as_json(res).await
     }
 
     pub async fn configure_experience(
@@ -60,15 +75,20 @@ impl RobloxApi {
         experience_id: AssetId,
         experience_configuration: &ExperienceConfigurationModel,
     ) -> RobloxApiResult<()> {
-        let req = self
-            .client
-            .patch(format!(
-                "https://develop.roblox.com/v2/universes/{}/configuration",
-                experience_id
-            ))
-            .json(experience_configuration);
+        let res = self
+            .csrf_token_store
+            .send_request(|| async {
+                Ok(self
+                    .client
+                    .patch(format!(
+                        "https://develop.roblox.com/v2/universes/{}/configuration",
+                        experience_id
+                    ))
+                    .json(experience_configuration))
+            })
+            .await;
 
-        handle(req).await?;
+        handle(res).await?;
 
         Ok(())
     }
@@ -79,15 +99,20 @@ impl RobloxApi {
         active: bool,
     ) -> RobloxApiResult<()> {
         let endpoint = if active { "activate" } else { "deactivate" };
-        let req = self
-            .client
-            .post(format!(
-                "https://develop.roblox.com/v1/universes/{}/{}",
-                experience_id, endpoint
-            ))
-            .header(header::CONTENT_LENGTH, 0);
+        let res = self
+            .csrf_token_store
+            .send_request(|| async {
+                Ok(self
+                    .client
+                    .post(format!(
+                        "https://develop.roblox.com/v1/universes/{}/{}",
+                        experience_id, endpoint
+                    ))
+                    .header(header::CONTENT_LENGTH, 0))
+            })
+            .await;
 
-        handle(req).await?;
+        handle(res).await?;
 
         Ok(())
     }

@@ -23,15 +23,20 @@ impl RobloxApi {
         developer_product_id: AssetId,
         icon_file: PathBuf,
     ) -> RobloxApiResult<CreateDeveloperProductIconResponse> {
-        let req = self
-            .client
-            .post(format!(
-                "https://apis.roblox.com/developer-products/v1/developer-products/{}/image",
-                developer_product_id
-            ))
-            .multipart(Form::new().part("imageFile", get_file_part(icon_file).await?));
+        let res = self
+            .csrf_token_store
+            .send_request(|| async {
+                Ok(self
+                    .client
+                    .post(format!(
+                        "https://apis.roblox.com/developer-products/v1/developer-products/{}/image",
+                        developer_product_id
+                    ))
+                    .multipart(Form::new().part("imageFile", get_file_part(&icon_file).await?)))
+            })
+            .await;
 
-        handle_as_json(req).await
+        handle_as_json(res).await
     }
 
     pub async fn create_developer_product(
@@ -41,20 +46,25 @@ impl RobloxApi {
         price: u32,
         description: String,
     ) -> RobloxApiResult<CreateDeveloperProductResponse> {
-        let req = self
-            .client
-            .post(format!(
+        let res = self
+            .csrf_token_store
+            .send_request(|| async {
+                Ok(self
+                    .client
+                    .post(format!(
                 "https://apis.roblox.com/developer-products/v1/universes/{}/developerproducts",
                 experience_id
             ))
-            .header(header::CONTENT_LENGTH, 0)
-            .query(&[
-                ("name", &name),
-                ("priceInRobux", &price.to_string()),
-                ("description", &description),
-            ]);
+                    .header(header::CONTENT_LENGTH, 0)
+                    .query(&[
+                        ("name", &name),
+                        ("priceInRobux", &price.to_string()),
+                        ("description", &description),
+                    ]))
+            })
+            .await;
 
-        handle_as_json(req).await
+        handle_as_json(res).await
     }
 
     pub async fn list_developer_products(
@@ -62,15 +72,20 @@ impl RobloxApi {
         experience_id: AssetId,
         page: u32,
     ) -> RobloxApiResult<ListDeveloperProductsResponse> {
-        let req = self
-            .client
-            .get("https://apis.roblox.com/developer-products/v1/developer-products/list")
-            .query(&[
-                ("universeId", &experience_id.to_string()),
-                ("page", &page.to_string()),
-            ]);
+        let res = self
+            .csrf_token_store
+            .send_request(|| async {
+                Ok(self
+                    .client
+                    .get("https://apis.roblox.com/developer-products/v1/developer-products/list")
+                    .query(&[
+                        ("universeId", &experience_id.to_string()),
+                        ("page", &page.to_string()),
+                    ]))
+            })
+            .await;
 
-        handle_as_json(req).await
+        handle_as_json(res).await
     }
 
     pub async fn get_all_developer_products(
@@ -98,12 +113,17 @@ impl RobloxApi {
         &self,
         developer_product_id: AssetId,
     ) -> RobloxApiResult<GetDeveloperProductResponse> {
-        let req = self.client.get(format!(
-            "https://apis.roblox.com/developer-products/v1/developer-products/{}",
-            developer_product_id
-        ));
+        let res = self
+            .csrf_token_store
+            .send_request(|| async {
+                Ok(self.client.get(format!(
+                    "https://apis.roblox.com/developer-products/v1/developer-products/{}",
+                    developer_product_id
+                )))
+            })
+            .await;
 
-        handle_as_json(req).await
+        handle_as_json(res).await
     }
 
     pub async fn update_developer_product(
@@ -114,7 +134,8 @@ impl RobloxApi {
         price: u32,
         description: String,
     ) -> RobloxApiResult<()> {
-        let req = self
+        let res = self.csrf_token_store.send_request(||async {
+Ok(self
             .client
             .post(format!(
                 "https://apis.roblox.com/developer-products/v1/universes/{}/developerproducts/{}/update",
@@ -124,9 +145,10 @@ impl RobloxApi {
                 "Name": name,
                 "PriceInRobux": price,
                 "Description": description,
-            }));
+            })))
+        }).await;
 
-        handle(req).await?;
+        handle(res).await?;
 
         Ok(())
     }

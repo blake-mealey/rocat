@@ -11,17 +11,22 @@ impl RobloxApi {
         request: R,
     ) -> RobloxApiResult<()>
     where
-        R: Into<GrantAssetPermissionsRequest>,
+        R: Into<GrantAssetPermissionsRequest> + Clone,
     {
-        let req = self
-            .client
-            .patch(format!(
-                "https://apis.roblox.com/asset-permissions-api/v1/assets/{}/permissions",
-                asset_id
-            ))
-            .json(&request.into());
+        let res = self
+            .csrf_token_store
+            .send_request(|| async {
+                Ok(self
+                    .client
+                    .patch(format!(
+                        "https://apis.roblox.com/asset-permissions-api/v1/assets/{}/permissions",
+                        asset_id
+                    ))
+                    .json(&request.clone().into()))
+            })
+            .await;
 
-        handle(req).await?;
+        handle(res).await?;
 
         Ok(())
     }

@@ -2,13 +2,13 @@ use serde::Serialize;
 
 use crate::models::AssetId;
 
-#[derive(Serialize)]
+#[derive(Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct GrantAssetPermissionsRequest {
     pub requests: Vec<GrantAssetPermissionsRequestRequest>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct GrantAssetPermissionsRequestRequest {
     pub subject_type: GrantAssetPermissionRequestSubjectType,
@@ -16,12 +16,12 @@ pub struct GrantAssetPermissionsRequestRequest {
     pub action: GrantAssetPermissionRequestAction,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Clone)]
 pub enum GrantAssetPermissionRequestSubjectType {
     Universe,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Clone)]
 pub enum GrantAssetPermissionRequestAction {
     Use,
 }

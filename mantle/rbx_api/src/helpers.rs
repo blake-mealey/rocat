@@ -1,6 +1,7 @@
-use std::{ffi::OsStr, path::PathBuf};
+use std::{ffi::OsStr, path::Path};
 
-use log::trace;
+use log::{debug, trace};
+use rbx_auth::CsrfTokenRequestError;
 use reqwest::{multipart::Part, Body};
 use scraper::{Html, Selector};
 use serde::de;
@@ -49,9 +50,8 @@ pub async fn get_roblox_api_error_from_response(response: reqwest::Response) -> 
 }
 
 pub async fn handle(
-    request_builder: reqwest::RequestBuilder,
+    result: Result<reqwest::Response, CsrfTokenRequestError>,
 ) -> RobloxApiResult<reqwest::Response> {
-    let result = request_builder.send().await;
     match result {
         Ok(response) => {
             // Check for redirects to the login page
@@ -67,27 +67,30 @@ pub async fn handle(
                 Err(get_roblox_api_error_from_response(response).await)
             }
         }
+        Err(CsrfTokenRequestError::RequestError(error)) => Err(error.into()),
         Err(error) => Err(error.into()),
     }
 }
 
-pub async fn handle_as_json<T>(request_builder: reqwest::RequestBuilder) -> RobloxApiResult<T>
+pub async fn handle_as_json<T>(
+    result: Result<reqwest::Response, CsrfTokenRequestError>,
+) -> RobloxApiResult<T>
 where
     T: de::DeserializeOwned,
 {
-    let res = handle(request_builder).await?;
+    let res = handle(result).await?;
     let full = res.text().await?;
     trace!("Handle JSON: {}", full);
     serde_json::from_str::<T>(&full).map_err(|e| e.into())
 }
 
 pub async fn handle_as_json_with_status<T>(
-    request_builder: reqwest::RequestBuilder,
+    result: Result<reqwest::Response, CsrfTokenRequestError>,
 ) -> RobloxApiResult<T>
 where
     T: de::DeserializeOwned,
 {
-    let response = handle(request_builder).await?;
+    let response = handle(result).await?;
     let status_code = response.status();
     let data = response.bytes().await?;
     if let Ok(error) = serde_json::from_slice::<RobloxApiErrorResponse>(&data) {
@@ -101,8 +104,9 @@ where
     Ok(serde_json::from_slice::<T>(&data)?)
 }
 
-pub async fn get_file_part(file_path: PathBuf) -> RobloxApiResult<Part> {
-    let file = File::open(&file_path).await?;
+pub async fn get_file_part(file_path: &Path) -> RobloxApiResult<Part> {
+    debug!("stream read {:?}", &file_path);
+    let file = File::open(file_path).await?;
     let reader = Body::wrap_stream(FramedRead::new(file, BytesCodec::new()));
 
     let file_name = file_path
@@ -110,7 +114,7 @@ pub async fn get_file_part(file_path: PathBuf) -> RobloxApiResult<Part> {
         .and_then(OsStr::to_str)
         .ok_or_else(|| RobloxApiError::NoFileName(file_path.display().to_string()))?
         .to_owned();
-    let mime = mime_guess::from_path(&file_path).first_or_octet_stream();
+    let mime = mime_guess::from_path(file_path).first_or_octet_stream();
 
     Ok(Part::stream(reader)
         .file_name(file_name)

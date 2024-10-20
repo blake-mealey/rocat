@@ -1,8 +1,8 @@
-use std::{env, fmt::Display};
+use std::{env, fmt::Display, sync::Arc};
 
 use clap::{crate_version, App, Arg};
 use log::error;
-use rbx_auth::WithRobloxAuth;
+use rbx_auth::{RobloxCookieStore, RobloxCsrfTokenStore};
 use reqwest::StatusCode;
 use serde_json::Value;
 
@@ -44,16 +44,18 @@ async fn main() {
 }
 
 async fn run(format: Option<&str>) -> Result<(), Box<dyn std::error::Error>> {
-    let auth = rbx_auth::RobloxAuth::new().await?;
+    let cookie_store = Arc::new(RobloxCookieStore::new()?);
+    let csrf_token_store = RobloxCsrfTokenStore::new();
 
     let client = reqwest::Client::builder()
         .user_agent("Roblox/WinInet")
-        .roblox_auth(auth)
+        .cookie_provider(cookie_store)
         .build()?;
 
-    let res = client
-        .get("https://users.roblox.com/v1/users/authenticated")
-        .send()
+    let res = csrf_token_store
+        .send_request(|| async {
+            Ok(client.get("https://users.roblox.com/v1/users/authenticated"))
+        })
         .await?;
 
     match res.status() {

@@ -24,22 +24,27 @@ impl RobloxApi {
         payment_source: CreatorType,
         expected_cost: u32,
     ) -> RobloxApiResult<CreateBadgeResponse> {
-        let req = self
-            .client
-            .post(&format!(
-                "https://badges.roblox.com/v1/universes/{}/badges",
-                experience_id
-            ))
-            .multipart(
-                Form::new()
-                    .part("request.files", get_file_part(icon_file_path).await?)
-                    .text("request.name", name)
-                    .text("request.description", description)
-                    .text("request.paymentSourceType", payment_source.to_string())
-                    .text("request.expectedCost", expected_cost.to_string()),
-            );
+        let res = self
+            .csrf_token_store
+            .send_request(|| async {
+                Ok(self
+                    .client
+                    .post(&format!(
+                        "https://badges.roblox.com/v1/universes/{}/badges",
+                        experience_id
+                    ))
+                    .multipart(
+                        Form::new()
+                            .part("request.files", get_file_part(&icon_file_path).await?)
+                            .text("request.name", name.clone())
+                            .text("request.description", description.clone())
+                            .text("request.paymentSourceType", payment_source.to_string())
+                            .text("request.expectedCost", expected_cost.to_string()),
+                    ))
+            })
+            .await;
 
-        handle_as_json(req).await
+        handle_as_json(res).await
     }
 
     pub async fn update_badge(
@@ -49,16 +54,21 @@ impl RobloxApi {
         description: String,
         enabled: bool,
     ) -> RobloxApiResult<()> {
-        let req = self
-            .client
-            .patch(format!("https://badges.roblox.com/v1/badges/{}", badge_id))
-            .json(&json!({
-                "name": name,
-                "description": description,
-                "enabled": enabled,
-            }));
+        let res = self
+            .csrf_token_store
+            .send_request(|| async {
+                Ok(self
+                    .client
+                    .patch(format!("https://badges.roblox.com/v1/badges/{}", badge_id))
+                    .json(&json!({
+                        "name": name,
+                        "description": description,
+                        "enabled": enabled,
+                    })))
+            })
+            .await;
 
-        handle(req).await?;
+        handle(res).await?;
 
         Ok(())
     }
@@ -67,12 +77,17 @@ impl RobloxApi {
         &self,
         experience_id: AssetId,
     ) -> RobloxApiResult<i32> {
-        let req = self.client.get(format!(
-            "https://badges.roblox.com/v1/universes/{}/free-badges-quota",
-            experience_id
-        ));
+        let res = self
+            .csrf_token_store
+            .send_request(|| async {
+                Ok(self.client.get(format!(
+                    "https://badges.roblox.com/v1/universes/{}/free-badges-quota",
+                    experience_id
+                )))
+            })
+            .await;
 
-        handle_as_json(req).await
+        handle_as_json(res).await
     }
 
     pub async fn list_badges(
@@ -80,15 +95,21 @@ impl RobloxApi {
         experience_id: AssetId,
         page_cursor: Option<String>,
     ) -> RobloxApiResult<ListBadgesResponse> {
-        let mut req = self.client.get(format!(
-            "https://badges.roblox.com/v1/universes/{}/badges",
-            experience_id
-        ));
-        if let Some(page_cursor) = page_cursor {
-            req = req.query(&[("cursor", &page_cursor)]);
-        }
+        let res = self
+            .csrf_token_store
+            .send_request(|| async {
+                let mut req = self.client.get(format!(
+                    "https://badges.roblox.com/v1/universes/{}/badges",
+                    experience_id
+                ));
+                if let Some(page_cursor) = &page_cursor {
+                    req = req.query(&[("cursor", page_cursor)]);
+                }
+                Ok(req)
+            })
+            .await;
 
-        handle_as_json(req).await
+        handle_as_json(res).await
     }
 
     pub async fn get_all_badges(
@@ -117,14 +138,19 @@ impl RobloxApi {
         badge_id: AssetId,
         icon_file: PathBuf,
     ) -> RobloxApiResult<UploadImageResponse> {
-        let req = self
-            .client
-            .post(&format!(
-                "https://publish.roblox.com/v1/badges/{}/icon",
-                badge_id
-            ))
-            .multipart(Form::new().part("request.files", get_file_part(icon_file).await?));
+        let res = self
+            .csrf_token_store
+            .send_request(|| async {
+                Ok(self
+                    .client
+                    .post(&format!(
+                        "https://publish.roblox.com/v1/badges/{}/icon",
+                        badge_id
+                    ))
+                    .multipart(Form::new().part("request.files", get_file_part(&icon_file).await?)))
+            })
+            .await;
 
-        handle_as_json(req).await
+        handle_as_json(res).await
     }
 }

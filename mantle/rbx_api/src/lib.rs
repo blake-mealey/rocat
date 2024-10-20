@@ -15,31 +15,43 @@ pub mod social_links;
 pub mod spatial_voice;
 pub mod thumbnails;
 
+use std::sync::Arc;
+
 use errors::{RobloxApiError, RobloxApiResult};
 use helpers::handle;
-use rbx_auth::{RobloxAuth, WithRobloxAuth};
+use rbx_auth::{RobloxCookieStore, RobloxCsrfTokenStore};
 
 pub struct RobloxApi {
     client: reqwest::Client,
+    csrf_token_store: RobloxCsrfTokenStore,
 }
 
 impl RobloxApi {
-    pub fn new(roblox_auth: RobloxAuth) -> RobloxApiResult<Self> {
+    pub fn new(
+        cookie_store: Arc<RobloxCookieStore>,
+        csrf_token_store: RobloxCsrfTokenStore,
+    ) -> RobloxApiResult<Self> {
         Ok(Self {
+            csrf_token_store,
             client: reqwest::Client::builder()
                 .connection_verbose(true)
                 .user_agent("Roblox/WinInet")
-                .roblox_auth(roblox_auth)
+                .cookie_provider(cookie_store)
                 .build()?,
         })
     }
 
     pub async fn validate_auth(&self) -> RobloxApiResult<()> {
-        let req = self
-            .client
-            .get("https://users.roblox.com/v1/users/authenticated");
+        let res = self
+            .csrf_token_store
+            .send_request(|| async {
+                Ok(self
+                    .client
+                    .get("https://users.roblox.com/v1/users/authenticated"))
+            })
+            .await;
 
-        handle(req)
+        handle(res)
             .await
             .map_err(|_| RobloxApiError::Authorization)?;
 
